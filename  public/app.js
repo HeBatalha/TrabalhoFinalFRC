@@ -25,6 +25,13 @@ function init() {
   document.querySelector('#createBtn').addEventListener('click', createRoom);
   document.querySelector('#joinBtn').addEventListener('click', joinRoom);
   roomDialog = new mdc.dialog.MDCDialog(document.querySelector('#room-dialog'));
+  document.querySelector('#sendMessageBtn').addEventListener('click', sendMessage); // Event listener das mensagens
+  // Inicializa chat em salas já criadas
+  if (roomId) {
+    const db = firebase.firestore();
+    chatRef = db.collection('rooms').doc(roomId).collection('messages');
+    listenForMessages();
+  }
 }
 
 async function createRoom() {
@@ -63,7 +70,7 @@ async function createRoom() {
   roomId = roomRef.id;
   console.log(`New room created with SDP offer. Room ID: ${roomRef.id}`);
   document.querySelector(
-      '#currentRoom').innerText = `Current room is ${roomRef.id} - You are the caller!`;
+      '#currentRoom').innerText = `O ID da sala atual é: ${roomRef.id} - You are the caller!`;
 
   // Code for creating a room above
   
@@ -104,6 +111,9 @@ async function createRoom() {
     });
   });
   // Listen for remote ICE candidates above
+  chatRef = roomRef.collection('messages');
+  listenForMessages(); // Espera por mensagens
+
 }
 
 function joinRoom() {
@@ -115,7 +125,7 @@ function joinRoom() {
         roomId = document.querySelector('#room-id').value;
         console.log('Join room: ', roomId);
         document.querySelector(
-            '#currentRoom').innerText = `Current room is ${roomId} - You are the callee!`;
+            '#currentRoom').innerText = `O ID da sala atual é: ${roomId} - You are the callee!`;
         await joinRoomById(roomId);
       }, {once: true});
   roomDialog.open();
@@ -185,6 +195,8 @@ async function joinRoomById(roomId) {
         });
       });
     // Listening for remote ICE candidates above
+    chatRef = roomRef.collection('messages');
+    listenForMessages(); // Espera por mensagens
   }
 }
 
@@ -262,5 +274,33 @@ function registerPeerConnectionListeners() {
         `ICE connection state change: ${peerConnection.iceConnectionState}`);
   });
 }
+
+async function sendMessage() {
+  const messageInput = document.querySelector('#messageInput');
+  const messageText = messageInput.value.trim();
+
+  if (messageText) {
+    await chatRef.add({
+      text: messageText,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    messageInput.value = ''; // Limpa a caixa de input
+  }
+}
+
+function listenForMessages() {
+  chatRef.orderBy('timestamp').onSnapshot(snapshot => {
+    const messagesContainer = document.querySelector('#messages');
+    messagesContainer.innerHTML = ''; // Limpa mensagens existentes
+    
+    snapshot.forEach(doc => {
+      const message = doc.data();
+      const messageElement = document.createElement('div');
+      messageElement.textContent = message.text;
+      messagesContainer.appendChild(messageElement);
+    });
+  });
+}
+
 
 init();
