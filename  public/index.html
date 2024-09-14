@@ -20,21 +20,13 @@
 <body>
 <h1>Videoconferência WebRTC</h1>
 <div id="buttons">
-    <button class="mdc-button mdc-button--raised" id="cameraBtn">
-        <i class="material-icons mdc-button__icon" aria-hidden="true">perm_camera_mic</i>
-        <span class="mdc-button__label">Ligar câmera e microfone</span>
-    </button>
-    <button class="mdc-button mdc-button--raised" disabled id="createBtn">
+    <button class="mdc-button mdc-button--raised" id="createBtn">
         <i class="material-icons mdc-button__icon" aria-hidden="true">group_add</i>
         <span class="mdc-button__label">Criar sala</span>
     </button>
-    <button class="mdc-button mdc-button--raised" disabled id="joinBtn">
+    <button class="mdc-button mdc-button--raised" id="joinBtn">
         <i class="material-icons mdc-button__icon" aria-hidden="true">group</i>
         <span class="mdc-button__label">Juntar-se a sala</span>
-    </button>
-    <button class="mdc-button mdc-button--raised" disabled id="hangupBtn">
-        <i class="material-icons mdc-button__icon" aria-hidden="true">close</i>
-        <span class="mdc-button__label">Desligar</span>
     </button>
 </div>
 <div>
@@ -44,9 +36,19 @@
     <video id="localVideo" muted autoplay playsinline></video>
     <video id="remoteVideo" autoplay playsinline></video>
 </div>
-<div>
-    <button id="toggleCamBtn">Desligar Câmera</button>
-    <button id="toggleMicBtn">Mutar</button>
+<div id="callControl">
+    <button class="mdc-button mdc-button--raised" id="toggleCamBtn">
+        <i class="material-icons mdc-button__icon" aria-hidden="true">camera</i>
+        <span class="mdc-button__label">Desligar Câmera</span>
+    </button>
+    <button class="mdc-button mdc-button--raised" id="toggleMicBtn">
+        <i class="material-icons mdc-button__icon" aria-hidden="true">microfone</i>
+        <span class="mdc-button__label">Mutar</span>
+    </button>
+    <button class="mdc-button mdc-button--raised" id="hangupBtn">
+        <i class="material-icons mdc-button__icon" aria-hidden="true">close</i>
+        <span class="mdc-button__label">Sair da Chamada</span>
+    </button>
 </div>
 <div class="mdc-dialog"
      id="room-dialog"

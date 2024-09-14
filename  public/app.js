@@ -23,7 +23,6 @@ let isMicOn = true;
 
 
 function init() {
-  document.querySelector('#cameraBtn').addEventListener('click', openUserMedia);
   document.querySelector('#hangupBtn').addEventListener('click', hangUp);
   document.querySelector('#createBtn').addEventListener('click', createRoom);
   document.querySelector('#joinBtn').addEventListener('click', joinRoom);
@@ -38,12 +37,14 @@ function init() {
     chatRef = db.collection('rooms').doc(roomId).collection('messages');
     listenForMessages();
   }
+  document.getElementById('videos').style.display = 'none';
+  document.getElementById('callControl').style.display = 'none';
+  document.getElementById('chat').style.display = 'none';
 }
 
 async function createRoom() {
-  // Atualiza o estado dos botões da interface do usuário
-  document.querySelector('#createBtn').disabled = true;
-  document.querySelector('#joinBtn').disabled = true;
+  // Abre o acesso à mídia do usuário
+  await openUserMedia();
 
   // Inicializa o Firestore
   const db = firebase.firestore();
@@ -55,7 +56,6 @@ async function createRoom() {
   peerConnection = new RTCPeerConnection(configuration);
   registerPeerConnectionListeners();
   addPeerTrackListener();
-
 
   // Adiciona as faixas de mídia local à conexão peer
   localStream.getTracks().forEach(track => {
@@ -97,24 +97,22 @@ async function createRoom() {
 }
 
 
-function joinRoom() {
-  // Atualiza o estado dos botões da interface do usuário
-  document.querySelector('#createBtn').disabled = true;
-  document.querySelector('#joinBtn').disabled = true;
+async function joinRoom() {
+  // Abre o acesso à mídia do usuário
+  await openUserMedia();
 
   // Observa o botão de confirmação de entrada na sala
-  document.querySelector('#confirmJoinBtn').
-      addEventListener('click', async () => {
-        // Obtém o ID da sala inserido pelo usuário
-        roomId = document.querySelector('#room-id').value;
-        
-        // Atualiza o texto para mostrar o ID da sala e o papel do usuário
-        document.querySelector(
-            '#currentRoom').innerText = `Você é o convidado na sala de ID: ${roomId}`;
-        
-        // Chama a função para entrar na sala com o ID especificado
-        await joinRoomById(roomId);
-      }, {once: true});
+  document.querySelector('#confirmJoinBtn').addEventListener('click', async () => {
+    // Obtém o ID da sala inserido pelo usuário
+    roomId = document.querySelector('#room-id').value;
+    
+    // Atualiza o texto para mostrar o ID da sala e o papel do usuário
+    document.querySelector(
+        '#currentRoom').innerText = `Você é o convidado na sala de ID: ${roomId}`;
+    
+    // Chama a função para entrar na sala com o ID especificado
+    await joinRoomById(roomId);
+  }, { once: true });
 
   // Abre o diálogo para inserir o ID da sala
   roomDialog.open();
@@ -175,7 +173,7 @@ async function joinRoomById(roomId) {
 }
 
 
-async function openUserMedia(e) {
+async function openUserMedia() {
   // Solicita permissão para acessar a câmera e o microfone do usuário
   const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
   
@@ -187,15 +185,15 @@ async function openUserMedia(e) {
   remoteStream = new MediaStream();
   document.querySelector('#remoteVideo').srcObject = remoteStream;
 
-  // Atualiza o estado dos botões da interface do usuário
-  document.querySelector('#cameraBtn').disabled = true; 
-  document.querySelector('#joinBtn').disabled = false;
-  document.querySelector('#createBtn').disabled = false;
-  document.querySelector('#hangupBtn').disabled = false;
+  // Atualiza a interface do usuário
+  document.getElementById('buttons').style.display = 'none';
+  document.getElementById('videos').style.display = 'flex';
+  document.getElementById('callControl').style.display = 'flex';
+  document.getElementById('chat').style.display = 'flex';
 }
 
 
-async function hangUp(e) {
+async function hangUp() {
   // Para todas as faixas de mídia (vídeo e áudio) do stream local
   const tracks = document.querySelector('#localVideo').srcObject.getTracks();
   tracks.forEach(track => track.stop());
@@ -213,13 +211,13 @@ async function hangUp(e) {
   // Limpa as referências dos elementos de vídeo
   document.querySelector('#localVideo').srcObject = null;
   document.querySelector('#remoteVideo').srcObject = null;
-
-  // Atualiza o estado dos botões da interface do usuário
-  document.querySelector('#cameraBtn').disabled = false;
-  document.querySelector('#joinBtn').disabled = true;
-  document.querySelector('#createBtn').disabled = true;
-  document.querySelector('#hangupBtn').disabled = true;
   document.querySelector('#currentRoom').innerText = '';
+
+  // Atualiza a interface do usuário
+  document.getElementById('videos').style.display = 'none';
+  document.getElementById('callControl').style.display = 'none';
+  document.getElementById('chat').style.display = 'none';
+  document.getElementById('buttons').style.display = 'flex';
 
   // Remove a sala do Firestore, se o ID da sala existir
   if (roomId) {
