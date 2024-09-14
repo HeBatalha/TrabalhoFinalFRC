@@ -18,6 +18,9 @@ let localStream = null;
 let remoteStream = null;
 let roomDialog = null;
 let roomId = null;
+let isCameraOn = true;
+let isMicOn = true;
+
 
 function init() {
   document.querySelector('#cameraBtn').addEventListener('click', openUserMedia);
@@ -26,6 +29,9 @@ function init() {
   document.querySelector('#joinBtn').addEventListener('click', joinRoom);
   roomDialog = new mdc.dialog.MDCDialog(document.querySelector('#room-dialog'));
   document.querySelector('#sendMessageBtn').addEventListener('click', sendMessage); // Event listener das mensagens
+  document.querySelector('#toggleCamBtn').addEventListener('click', toggleCam);
+  document.querySelector('#toggleMicBtn').addEventListener('click', toggleMic);
+
   // Inicializa chat em salas já criadas
   if (roomId) {
     const db = firebase.firestore();
@@ -302,5 +308,34 @@ function listenForMessages() {
   });
 }
 
+function toggleCam() {
+  if (localStream) {
+    // Obtém a track de vídeo
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      // Alterna entre habilitar/desabilitar
+      videoTrack.enabled = !videoTrack.enabled;
+      isCameraOn = videoTrack.enabled;
+
+      // Atualiza o texto do botão
+      document.querySelector('#toggleCameraBtn').innerText = isCameraOn ? 'Desligar Câmera' : 'Ligar Câmera';
+    }
+  }
+}
+
+function toggleMic() {
+  if (localStream) {
+    // Obtém a track de áudio
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      // Alterna entre habilitar/desabilitar
+      audioTrack.enabled = !audioTrack.enabled;
+      isMicOn = audioTrack.enabled;
+
+      // Atualiza o texto do botão
+      document.querySelector('#toggleMicBtn').innerText = isMicOn ? 'Mutar' : 'Desmutar';
+    }
+  }
+}
 
 init();
