@@ -52,9 +52,10 @@ async function createRoom() {
   const roomRef = await db.collection('rooms').doc();
 
   // Configura e cria a conexão peer (WebRTC)
-  console.log('Create PeerConnection with configuration: ', configuration);
   peerConnection = new RTCPeerConnection(configuration);
   registerPeerConnectionListeners();
+  addPeerTrackListener();
+
 
   // Adiciona as faixas de mídia local à conexão peer
   localStream.getTracks().forEach(track => {
@@ -71,14 +72,6 @@ async function createRoom() {
   roomId = roomRef.id;
   document.querySelector(
       '#currentRoom').innerText = `Você é o dono na sala de ID: ${roomId}`;
-
-    // Escuta por faixas de mídia remotas e as adiciona ao 'remoteStream'
-    peerConnection.addEventListener('track', event => {
-    event.streams[0].getTracks().forEach(track => {
-      remoteStream.addTrack(track);
-    });
-  });
-
 
   // Escuta por mudanças na descrição remota da sessão
   roomRef.onSnapshot(async snapshot => {
@@ -141,6 +134,7 @@ async function joinRoomById(roomId) {
     // Configura e cria a conexão peer (WebRTC)
     peerConnection = new RTCPeerConnection(configuration);
     registerPeerConnectionListeners();
+    addPeerTrackListener();
 
     // Adiciona as faixas de mídia local à conexão peer
     localStream.getTracks().forEach(track => {
@@ -153,13 +147,6 @@ async function joinRoomById(roomId) {
       if (event.candidate) {
         calleeCandidatesCollection.add(event.candidate.toJSON());
       }
-    });
-
-    // Escuta por faixas de mídia remotas e as adiciona ao 'remoteStream'
-    peerConnection.addEventListener('track', event => {
-      event.streams[0].getTracks().forEach(track => {
-        remoteStream.addTrack(track);
-      });
     });
 
     // Configura a descrição da sessão remota e cria uma resposta SDP
@@ -284,6 +271,14 @@ function registerPeerConnectionListeners() {
   });
 }
 
+function addPeerTrackListener() {
+  // Escuta por faixas de mídia remotas e as adiciona ao 'remoteStream'
+  peerConnection.addEventListener('track', event => {
+    event.streams[0].getTracks().forEach(track => {
+      remoteStream.addTrack(track);
+    });
+  });
+}
 
 async function sendMessage() {
   const messageInput = document.querySelector('#messageInput');
