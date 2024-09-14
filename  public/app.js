@@ -1,5 +1,3 @@
-mdc.ripple.MDCRipple.attachTo(document.querySelector('.mdc-button'));
-
 // Configuração inicial e STUN/TURN Servers
 const configuration = {
   iceServers: [
@@ -16,7 +14,6 @@ const configuration = {
 let peerConnection = null;
 let localStream = null;
 let remoteStream = null;
-let roomDialog = null;
 let roomId = null;
 let isCameraOn = true;
 let isMicOn = true;
@@ -26,7 +23,6 @@ function init() {
   document.querySelector('#hangupBtn').addEventListener('click', hangUp);
   document.querySelector('#createBtn').addEventListener('click', createRoom);
   document.querySelector('#joinBtn').addEventListener('click', joinRoom);
-  roomDialog = new mdc.dialog.MDCDialog(document.querySelector('#room-dialog'));
   document.querySelector('#sendMessageBtn').addEventListener('click', sendMessage);
   document.querySelector('#toggleCamBtn').addEventListener('click', toggleCam);
   document.querySelector('#toggleMicBtn').addEventListener('click', toggleMic);
@@ -37,9 +33,7 @@ function init() {
     chatRef = db.collection('rooms').doc(roomId).collection('messages');
     listenForMessages();
   }
-  document.getElementById('videos').style.display = 'none';
-  document.getElementById('callControl').style.display = 'none';
-  document.getElementById('chat').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'none';
 }
 
 async function createRoom() {
@@ -71,7 +65,7 @@ async function createRoom() {
   
   roomId = roomRef.id;
   document.querySelector(
-      '#currentRoom').innerText = `Você é o dono na sala de ID: ${roomId}`;
+      '#currentRoom').innerText = `ID da Sala: ${roomId} \n[Proprietário]`;
 
   // Escuta por mudanças na descrição remota da sessão
   roomRef.onSnapshot(async snapshot => {
@@ -101,21 +95,15 @@ async function joinRoom() {
   // Abre o acesso à mídia do usuário
   await openUserMedia();
 
-  // Observa o botão de confirmação de entrada na sala
-  document.querySelector('#confirmJoinBtn').addEventListener('click', async () => {
-    // Obtém o ID da sala inserido pelo usuário
-    roomId = document.querySelector('#room-id').value;
+  // Obtém o ID da sala inserido pelo usuário
+  roomId = document.querySelector('#room-id').value;
+  
+  // Atualiza o texto para mostrar o ID da sala e o papel do usuário
+  document.querySelector(
+      '#currentRoom').innerText = `ID da Sala: ${roomId} \n[Convidado]`;
     
-    // Atualiza o texto para mostrar o ID da sala e o papel do usuário
-    document.querySelector(
-        '#currentRoom').innerText = `Você é o convidado na sala de ID: ${roomId}`;
-    
-    // Chama a função para entrar na sala com o ID especificado
-    await joinRoomById(roomId);
-  }, { once: true });
-
-  // Abre o diálogo para inserir o ID da sala
-  roomDialog.open();
+  // Chama a função para entrar na sala com o ID especificado 
+  await joinRoomById(roomId);
 }
 
 
@@ -187,9 +175,7 @@ async function openUserMedia() {
 
   // Atualiza a interface do usuário
   document.getElementById('buttons').style.display = 'none';
-  document.getElementById('videos').style.display = 'flex';
-  document.getElementById('callControl').style.display = 'flex';
-  document.getElementById('chat').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'flex';
 }
 
 
@@ -214,9 +200,7 @@ async function hangUp() {
   document.querySelector('#currentRoom').innerText = '';
 
   // Atualiza a interface do usuário
-  document.getElementById('videos').style.display = 'none';
-  document.getElementById('callControl').style.display = 'none';
-  document.getElementById('chat').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'none';
   document.getElementById('buttons').style.display = 'flex';
 
   // Remove a sala do Firestore, se o ID da sala existir
@@ -317,8 +301,13 @@ function toggleCam() {
       videoTrack.enabled = !videoTrack.enabled;
       isCameraOn = videoTrack.enabled;
 
-      // Atualiza o texto do botão
-      document.querySelector('#toggleCameraBtn').innerText = isCameraOn ? 'Desligar Câmera' : 'Ligar Câmera';
+      // Atualiza os ícones do botão
+      const toggleCamBtn = document.querySelector('#toggleCamBtn');
+      const icons = toggleCamBtn.querySelectorAll('.material-icons');
+
+      // Mostra/esconde os ícones de acordo com o estado da câmera
+      icons[0].hidden = !isCameraOn; 
+      icons[1].hidden = isCameraOn;
     }
   }
 }
@@ -332,8 +321,13 @@ function toggleMic() {
       audioTrack.enabled = !audioTrack.enabled;
       isMicOn = audioTrack.enabled;
 
-      // Atualiza o texto do botão
-      document.querySelector('#toggleMicBtn').innerText = isMicOn ? 'Mutar' : 'Desmutar';
+    // Atualiza os ícones do botão
+    const toggleMicBtn = document.querySelector('#toggleMicBtn');
+    const icons = toggleMicBtn.querySelectorAll('.material-icons');
+
+    // Mostra/esconde os ícones de acordo com o estado do mic
+    icons[0].hidden = !isMicOn; 
+    icons[1].hidden = isMicOn;
     }
   }
 }
