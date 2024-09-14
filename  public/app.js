@@ -1,6 +1,6 @@
 mdc.ripple.MDCRipple.attachTo(document.querySelector('.mdc-button'));
 
-// DEfault configuration - Change these if you have a different STUN or TURN server.
+// Configuração inicial e STUN/TURN Servers
 const configuration = {
   iceServers: [
     {
@@ -28,7 +28,7 @@ function init() {
   document.querySelector('#createBtn').addEventListener('click', createRoom);
   document.querySelector('#joinBtn').addEventListener('click', joinRoom);
   roomDialog = new mdc.dialog.MDCDialog(document.querySelector('#room-dialog'));
-  document.querySelector('#sendMessageBtn').addEventListener('click', sendMessage); // Event listener das mensagens
+  document.querySelector('#sendMessageBtn').addEventListener('click', sendMessage);
   document.querySelector('#toggleCamBtn').addEventListener('click', toggleCam);
   document.querySelector('#toggleMicBtn').addEventListener('click', toggleMic);
 
@@ -41,31 +41,32 @@ function init() {
 }
 
 async function createRoom() {
+  // Desativa os botões enquanto cria a sala
   document.querySelector('#createBtn').disabled = true;
   document.querySelector('#joinBtn').disabled = true;
+
+  // Inicializa o Firestore
   const db = firebase.firestore();
 
-  const roomRef = await db.collection('rooms').doc(); // ADD
+  // Cria uma referência para a nova sala no Firestore
+  const roomRef = await db.collection('rooms').doc();
 
+  // Configura e cria a conexão peer (WebRTC)
   console.log('Create PeerConnection with configuration: ', configuration);
   peerConnection = new RTCPeerConnection(configuration);
-
   registerPeerConnectionListeners();
 
-  // Add code for creating a room here
-  
-  // Code for creating room above
-  
+  // Adiciona as faixas de mídia local à conexão peer
   localStream.getTracks().forEach(track => {
     peerConnection.addTrack(track, localStream);
   });
 
-  // Code for creating a room below
-  
+  // Cria uma oferta (offer) para iniciar a negociação peer
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
   console.log('Created offer:', offer);
 
+  // Salva a oferta (offer) no Firestore para que outros participantes possam se conectar
   const roomWithOffer = {
     'offer': {
       type: offer.type,
@@ -74,18 +75,28 @@ async function createRoom() {
   };
   await roomRef.set(roomWithOffer);
   roomId = roomRef.id;
-  console.log(`New room created with SDP offer. Room ID: ${roomRef.id}`);
+  console.log(`New room created with SDP offer. Room ID: ${roomId}`);
   document.querySelector(
-      '#currentRoom').innerText = `O ID da sala atual é: ${roomRef.id} - You are the caller!`;
+      '#currentRoom').innerText = `Você é o dono na sala de ID: ${roomId}`;
 
-  // Code for creating a room above
-  
-  // Code for collecting ICE candidates below
-  const callerCandidatesCollection = roomRef.collection('callerCandidates'); // ADD
-  
-  // Code for collecting ICE candidates above
 
-  peerConnection.addEventListener('track', event => { // REVISAR
+  // ToDo: Checar a necessidade disso aqui
+  // // Configura a coleção para candidatos ICE do chamador
+  // const callerCandidatesCollection = roomRef.collection('callerCandidates');
+
+  // // Escuta por candidatos ICE remotos
+  // roomRef.collection('calleeCandidates').onSnapshot(snapshot => {
+  //   snapshot.docChanges().forEach(async change => {
+  //     if (change.type === 'added') {
+  //       let data = change.doc.data();
+  //       console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+  //       await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+  //     }
+  //   });
+  // });
+
+    // Escuta por faixas de mídia remotas e as adiciona ao 'remoteStream'
+    peerConnection.addEventListener('track', event => {
     console.log('Got remote track:', event.streams[0]);
     event.streams[0].getTracks().forEach(track => {
       console.log('Add a track to the remoteStream:', track);
@@ -93,9 +104,8 @@ async function createRoom() {
     });
   });
 
-  // Change room to here
 
-  // Listening for remote session description below
+  // Escuta por mudanças na descrição remota da sessão
   roomRef.onSnapshot(async snapshot => {
     const data = snapshot.data();
     if (!peerConnection.currentRemoteDescription && data && data.answer) {
@@ -104,9 +114,8 @@ async function createRoom() {
       await peerConnection.setRemoteDescription(rtcSessionDescription);
     }
   });
-  // Listening for remote session description above
 
-  // Listen for remote ICE candidates below
+  // Escuta por candidatos ICE remotos e os adiciona à conexão peer
   roomRef.collection('calleeCandidates').onSnapshot(snapshot => {
     snapshot.docChanges().forEach(async change => {
       if (change.type === 'added') {
@@ -116,42 +125,61 @@ async function createRoom() {
       }
     });
   });
-  // Listen for remote ICE candidates above
-  chatRef = roomRef.collection('messages');
-  listenForMessages(); // Espera por mensagens
 
+  // Configura a referência para o chat na sala atual
+  chatRef = roomRef.collection('messages');
+  // Escuta por mensagens no chat da sala
+  listenForMessages();
 }
 
+
 function joinRoom() {
+  // Desativa os botões enquanto o usuário tenta entrar na sala
   document.querySelector('#createBtn').disabled = true;
   document.querySelector('#joinBtn').disabled = true;
 
+  // Observa o botão de confirmação de entrada na sala
   document.querySelector('#confirmJoinBtn').
       addEventListener('click', async () => {
+        // Obtém o ID da sala inserido pelo usuário
         roomId = document.querySelector('#room-id').value;
         console.log('Join room: ', roomId);
+        
+        // Atualiza o texto para mostrar o ID da sala e o papel do usuário
         document.querySelector(
-            '#currentRoom').innerText = `O ID da sala atual é: ${roomId} - You are the callee!`;
+            '#currentRoom').innerText = `Você é o convidado na sala de ID: ${roomId}`;
+        
+        // Chama a função para entrar na sala com o ID especificado
         await joinRoomById(roomId);
       }, {once: true});
+
+  // Abre o diálogo para inserir o ID da sala
   roomDialog.open();
 }
 
+
 async function joinRoomById(roomId) {
+  // Inicializa o Firestore
   const db = firebase.firestore();
+
+  // Cria uma referência para a sala no Firestore
   const roomRef = db.collection('rooms').doc(`${roomId}`);
   const roomSnapshot = await roomRef.get();
   console.log('Got room:', roomSnapshot.exists);
 
+  // Verifica se a sala existe
   if (roomSnapshot.exists) {
+    // Configura e cria a conexão peer (WebRTC)
     console.log('Create PeerConnection with configuration: ', configuration);
     peerConnection = new RTCPeerConnection(configuration);
     registerPeerConnectionListeners();
+
+    // Adiciona as faixas de mídia local à conexão peer
     localStream.getTracks().forEach(track => {
       peerConnection.addTrack(track, localStream);
     });
 
-    // Code for collecting ICE candidates below
+    // Coleta e adiciona candidatos ICE locais à coleção 'calleeCandidates'
     const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
     peerConnection.addEventListener('icecandidate', event => {
       if (!event.candidate) {
@@ -162,8 +190,7 @@ async function joinRoomById(roomId) {
       calleeCandidatesCollection.add(event.candidate.toJSON());
     });
 
-    // Code for collecting ICE candidates above
-
+    // Escuta por faixas de mídia remotas e as adiciona ao 'remoteStream'
     peerConnection.addEventListener('track', event => {
       console.log('Got remote track:', event.streams[0]);
       event.streams[0].getTracks().forEach(track => {
@@ -172,8 +199,7 @@ async function joinRoomById(roomId) {
       });
     });
 
-    // Code for creating SDP answer below
-
+    // Configura a descrição da sessão remota e cria uma resposta SDP
     const offer = roomSnapshot.data().offer;
     console.log('Got offer:', offer);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
@@ -181,6 +207,7 @@ async function joinRoomById(roomId) {
     console.log('Created answer:', answer);
     await peerConnection.setLocalDescription(answer);
 
+    // Atualiza a sala com a resposta SDP
     const roomWithAnswer = {
       answer: {
         type: answer.type,
@@ -188,117 +215,148 @@ async function joinRoomById(roomId) {
       },
     };
     await roomRef.update(roomWithAnswer);
-    // Code for creating SDP answer above
 
-    // Listening for remote ICE candidates below
+    // Escuta por candidatos ICE remotos e os adiciona à conexão peer
     roomRef.collection('callerCandidates').onSnapshot(snapshot => {
-        snapshot.docChanges().forEach(async change => {
-          if (change.type === 'added') {
-            let data = change.doc.data();
-            console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data));
-          }
-        });
+      snapshot.docChanges().forEach(async change => {
+        if (change.type === 'added') {
+          let data = change.doc.data();
+          console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+          await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+        }
       });
-    // Listening for remote ICE candidates above
+    });
+
+    // Configura a referência para o chat na sala atual
     chatRef = roomRef.collection('messages');
-    listenForMessages(); // Espera por mensagens
+    // Escuta por mensagens no chat da sala
+    listenForMessages();
   }
 }
 
+
 async function openUserMedia(e) {
-  const stream = await navigator.mediaDevices.getUserMedia(
-      {video: true, audio: true});
+  // Solicita permissão para acessar a câmera e o microfone do usuário
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  
+  // Define o stream local (câmera e microfone) para ser exibido no elemento de vídeo local
   document.querySelector('#localVideo').srcObject = stream;
   localStream = stream;
+
+  // Inicializa um novo MediaStream para o vídeo remoto e define no elemento de vídeo remoto
   remoteStream = new MediaStream();
   document.querySelector('#remoteVideo').srcObject = remoteStream;
 
   console.log('Stream:', document.querySelector('#localVideo').srcObject);
-  document.querySelector('#cameraBtn').disabled = true;
+
+  // Habilita/desabilita os botões de interface de acordo com o estado atual
+  document.querySelector('#cameraBtn').disabled = true; 
   document.querySelector('#joinBtn').disabled = false;
   document.querySelector('#createBtn').disabled = false;
   document.querySelector('#hangupBtn').disabled = false;
 }
 
+
 async function hangUp(e) {
+  // Para todas as faixas de mídia (vídeo e áudio) do stream local
   const tracks = document.querySelector('#localVideo').srcObject.getTracks();
   tracks.forEach(track => {
     track.stop();
   });
 
+  // Para todas as faixas do stream remoto, se existirem
   if (remoteStream) {
     remoteStream.getTracks().forEach(track => track.stop());
   }
 
+  // Fecha a conexão peer-to-peer, se existir
   if (peerConnection) {
     peerConnection.close();
   }
 
+  // Limpa as referências dos elementos de vídeo
   document.querySelector('#localVideo').srcObject = null;
   document.querySelector('#remoteVideo').srcObject = null;
+
+  // Atualiza o estado dos botões da interface do usuário
   document.querySelector('#cameraBtn').disabled = false;
   document.querySelector('#joinBtn').disabled = true;
   document.querySelector('#createBtn').disabled = true;
   document.querySelector('#hangupBtn').disabled = true;
   document.querySelector('#currentRoom').innerText = '';
 
-  // Delete room on hangup
+  // Remove a sala do Firestore, se o ID da sala existir
   if (roomId) {
     const db = firebase.firestore();
     const roomRef = db.collection('rooms').doc(roomId);
+
+    // Deleta todos os candidatos ICE do callee
     const calleeCandidates = await roomRef.collection('calleeCandidates').get();
     calleeCandidates.forEach(async candidate => {
       await candidate.delete();
     });
+
+    // Deleta todos os candidatos ICE do caller
     const callerCandidates = await roomRef.collection('callerCandidates').get();
     callerCandidates.forEach(async candidate => {
       await candidate.delete();
     });
+
+    // Deleta o próprio documento da sala
     await roomRef.delete();
   }
 
+  // Recarrega a página para voltar ao estado inicial do app
   document.location.reload(true);
 }
 
+
 function registerPeerConnectionListeners() {
+  // Escuta mudanças no estado de coleta de ICE
   peerConnection.addEventListener('icegatheringstatechange', () => {
     console.log(
         `ICE gathering state changed: ${peerConnection.iceGatheringState}`);
   });
 
+  // Escuta mudanças no estado da conexão
   peerConnection.addEventListener('connectionstatechange', () => {
     console.log(`Connection state change: ${peerConnection.connectionState}`);
   });
 
+  // Escuta mudanças no estado de sinalização
   peerConnection.addEventListener('signalingstatechange', () => {
     console.log(`Signaling state change: ${peerConnection.signalingState}`);
   });
 
-  peerConnection.addEventListener('iceconnectionstatechange ', () => {
+  // Escuta mudanças no estado da conexão ICE
+  peerConnection.addEventListener('iceconnectionstatechange', () => {
     console.log(
         `ICE connection state change: ${peerConnection.iceConnectionState}`);
   });
 }
+
 
 async function sendMessage() {
   const messageInput = document.querySelector('#messageInput');
   const messageText = messageInput.value.trim();
 
   if (messageText) {
+    // Adiciona uma nova mensagem e o horário no chat do Firestore
     await chatRef.add({
       text: messageText,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
-    messageInput.value = ''; // Limpa a caixa de input
+    messageInput.value = '';
   }
 }
 
 function listenForMessages() {
+  // Escuta por novas mensagens na coleção 'messages', ordenadas por horário
   chatRef.orderBy('timestamp').onSnapshot(snapshot => {
     const messagesContainer = document.querySelector('#messages');
-    messagesContainer.innerHTML = ''; // Limpa mensagens existentes
+    messagesContainer.innerHTML = '';
     
+    // Cria um elemento com cada mensagem e o adiciona ao container
     snapshot.forEach(doc => {
       const message = doc.data();
       const messageElement = document.createElement('div');
