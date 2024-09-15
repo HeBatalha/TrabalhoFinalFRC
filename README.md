@@ -1,10 +1,16 @@
 # TrabalhoFinalFRC
 
-Henrique Batalha - 211061850 
+Henrique Batalha - 211061850
+
+Luciano Ricardo da Silva Junior - 221007653
+
 Yago Milagres Passos - 200049879
 
+# Como usar?
 
-# Como rodar o projeto?
+Acesse https://fir-rtc-eee9a.web.app
+
+# Como rodar o projeto (para desenvolvedores)?
 
 ## No linux:
 
