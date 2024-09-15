@@ -265,10 +265,13 @@ function addPeerTrackListener() {
 async function sendMessage() {
   const messageInput = document.querySelector('#messageInput');
   const messageText = messageInput.value.trim();
+  const usernameInput = document.querySelector('#usernameInput');
+  const usernameText =  usernameInput.value.trim() === '' ? 'Anônimo' : usernameInput.value.trim();
 
   if (messageText) {
     // Adiciona uma nova mensagem e o horário no chat do Firestore
     await chatRef.add({
+      username: usernameText,
       text: messageText,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -286,7 +289,10 @@ function listenForMessages() {
     snapshot.forEach(doc => {
       const message = doc.data();
       const messageElement = document.createElement('div');
-      messageElement.textContent = message.text;
+      // Converte o timestamp para tempo local
+      let date = message.timestamp.toDate();
+      date = date.toLocaleTimeString();
+      messageElement.textContent = `(${date}) ${message.username}: ${message.text}`;
       messagesContainer.appendChild(messageElement);
     });
   });
