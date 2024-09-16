@@ -1,10 +1,16 @@
 # TrabalhoFinalFRC
 
+## Integrantes
+
 Henrique Batalha - 211061850
 
 Luciano Ricardo da Silva Junior - 221007653
 
 Yago Milagres Passos - 200049879
+
+## Vídeo de apresentação
+
+https://www.youtube.com/watch?v=VWjV9sswKm4
 
 # Como usar?
 
