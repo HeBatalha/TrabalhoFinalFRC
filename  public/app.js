@@ -26,6 +26,8 @@ function init() {
   document.querySelector('#sendMessageBtn').addEventListener('click', sendMessage);
   document.querySelector('#toggleCamBtn').addEventListener('click', toggleCam);
   document.querySelector('#toggleMicBtn').addEventListener('click', toggleMic);
+  document.querySelector('#shareScreenBtn').addEventListener('click', shareScreen);
+
 
   // Inicializa chat em salas já criadas
   if (roomId) {
@@ -337,5 +339,45 @@ function toggleMic() {
     }
   }
 }
+
+async function shareScreen() {
+  try {
+    // Captura a tela do usuário
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+
+    // Substitui a track de vídeo local com a track da tela
+    const videoTrack = screenStream.getVideoTracks()[0];
+    const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
+    
+    if (sender) {
+      sender.replaceTrack(videoTrack);
+    }
+
+    // Exibe a tela compartilhada no vídeo local
+    document.querySelector('#localVideo').srcObject = screenStream;
+
+    // Quando o usuário parar o compartilhamento, retorna para a webcam
+    videoTrack.onended = () => {
+      stopScreenSharing();
+    };
+  } catch (error) {
+    console.error("Erro ao tentar compartilhar a tela: ", error);
+  }
+}
+
+async function stopScreenSharing() {
+  // Retorna à webcam quando o compartilhamento de tela terminar
+  const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+  const videoTrack = videoStream.getVideoTracks()[0];
+  const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
+  
+  if (sender) {
+    sender.replaceTrack(videoTrack);
+  }
+  
+  // Retorna a exibição ao vídeo da webcam
+  document.querySelector('#localVideo').srcObject = videoStream;
+}
+
 
 init();
