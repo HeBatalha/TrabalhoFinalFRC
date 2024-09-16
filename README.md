@@ -12,6 +12,8 @@ Yago Milagres Passos - 200049879
 
 https://www.youtube.com/watch?v=VWjV9sswKm4
 
+A funcionalidade de compartilhamento de tela foi adicionada após a gravação do vídeo.
+
 # Como usar?
 
 Acesse https://fir-rtc-eee9a.web.app
